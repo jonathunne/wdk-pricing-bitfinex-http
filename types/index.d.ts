@@ -1,9 +1,3 @@
-/**
- * @typedef {import('@tetherto/wdk-pricing-provider').PricePair} PricePair
- * @typedef {import('@tetherto/wdk-pricing-provider').HistoricalPriceOptions} HistoricalPriceOptions
- * @typedef {import('@tetherto/wdk-pricing-provider').HistoricalPriceResult} HistoricalPriceResult
- * @typedef {import('@tetherto/wdk-pricing-provider').PriceData} PriceData
- */
 export class BitfinexPricingClient extends PricingClient {
     /** @internal */
     HISTORICAL_DATA_AGE: number;
@@ -37,13 +31,9 @@ export class BitfinexPricingClient extends PricingClient {
     _tickerFor(from: string, to: string): string;
     /**
      * @internal
-     * @param {HistoricalPriceResult[]} results
-     * @returns {HistoricalPriceResult[]}
+     * @param {import('@tetherto/wdk-pricing-provider').HistoricalPriceResult[]} results
+     * @returns {import('@tetherto/wdk-pricing-provider').HistoricalPriceResult[]}
      */
-    _cappedToMaxResults(results: HistoricalPriceResult[]): HistoricalPriceResult[];
+    _cappedToMaxResults(results: import("@tetherto/wdk-pricing-provider").HistoricalPriceResult[]): import("@tetherto/wdk-pricing-provider").HistoricalPriceResult[];
 }
-export type PricePair = import("@tetherto/wdk-pricing-provider").PricePair;
-export type HistoricalPriceOptions = import("@tetherto/wdk-pricing-provider").HistoricalPriceOptions;
-export type HistoricalPriceResult = import("@tetherto/wdk-pricing-provider").HistoricalPriceResult;
-export type PriceData = import("@tetherto/wdk-pricing-provider").PriceData;
 import { PricingClient } from '@tetherto/wdk-pricing-provider';

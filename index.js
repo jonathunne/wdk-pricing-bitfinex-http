@@ -17,13 +17,6 @@
 import { PricingClient } from '@tetherto/wdk-pricing-provider'
 import axios from 'axios'
 
-/**
- * @typedef {import('@tetherto/wdk-pricing-provider').PricePair} PricePair
- * @typedef {import('@tetherto/wdk-pricing-provider').HistoricalPriceOptions} HistoricalPriceOptions
- * @typedef {import('@tetherto/wdk-pricing-provider').HistoricalPriceResult} HistoricalPriceResult
- * @typedef {import('@tetherto/wdk-pricing-provider').PriceData} PriceData
- */
-
 export class BitfinexPricingClient extends PricingClient {
   /** @internal */
   HISTORICAL_DATA_AGE = 365 * 24 * 60 * 60000
@@ -94,7 +87,7 @@ export class BitfinexPricingClient extends PricingClient {
    * batch request. Pairs that Bitfinex cannot convert directly (typically fiat
    * currencies it does not quote, e.g. BRL or ARS) fall back to a two-leg
    * conversion through USD using its fiat FX rates: `from -> USD -> to`.
-   * @param {PricePair[]} list - Array of currency pairs
+   * @param {import('@tetherto/wdk-pricing-provider').PricePair[]} list - Array of currency pairs
    * @returns {Promise<Array<number|null>>} Prices in the same order as input pairs; `null` for pairs that cannot be resolved
    */
   async getMultiCurrentPrices (list) {
@@ -143,8 +136,8 @@ export class BitfinexPricingClient extends PricingClient {
   /**
    * Fetches full price data (last price, daily change, relative daily change)
    * for multiple currency pairs in a single batch request.
-   * @param {PricePair[]} list - Array of currency pairs
-   * @returns {Promise<Array<PriceData|null>>} Price data in the same order as input pairs; `null` for pairs not present in the response
+   * @param {import('@tetherto/wdk-pricing-provider').PricePair[]} list - Array of currency pairs
+   * @returns {Promise<Array<import('@tetherto/wdk-pricing-provider').PriceData|null>>} Price data in the same order as input pairs; `null` for pairs not present in the response
    */
   async getMultiPriceData (list) {
     const symbols = list.map((p) => this._tickerFor(p.from, p.to)).join(',')
@@ -171,8 +164,8 @@ export class BitfinexPricingClient extends PricingClient {
   /**
    * @param {string} from - Base currency (e.g. 'BTC')
    * @param {string} to - Quote currency (e.g. 'USD')
-   * @param {HistoricalPriceOptions} [opts={}]
-   * @returns {Promise<HistoricalPriceResult[]>}
+   * @param {import('@tetherto/wdk-pricing-provider').HistoricalPriceOptions} [opts={}]
+   * @returns {Promise<import('@tetherto/wdk-pricing-provider').HistoricalPriceResult[]>}
    */
   async getHistoricalPrice (from, to, opts = {}) {
     if (
@@ -216,8 +209,8 @@ export class BitfinexPricingClient extends PricingClient {
 
   /**
    * @internal
-   * @param {HistoricalPriceResult[]} results
-   * @returns {HistoricalPriceResult[]}
+   * @param {import('@tetherto/wdk-pricing-provider').HistoricalPriceResult[]} results
+   * @returns {import('@tetherto/wdk-pricing-provider').HistoricalPriceResult[]}
    */
   _cappedToMaxResults (results) {
     if (results.length <= this.MAX_HISTORICAL_ENTRIES) {
