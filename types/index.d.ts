@@ -1,20 +1,10 @@
-/**
- * @typedef {import('@tetherto/wdk-pricing-provider').PricePair} PricePair
- * @typedef {import('@tetherto/wdk-pricing-provider').HistoricalPriceOptions} HistoricalPriceOptions
- * @typedef {import('@tetherto/wdk-pricing-provider').HistoricalPriceResult} HistoricalPriceResult
- * @typedef {import('@tetherto/wdk-pricing-provider').PriceData} PriceData
- */
-/**
- * @typedef {Object} BitfinexPricingClientOptions
- * @property {Object<string, string>} [currencyCodes] - Common-symbol-to-Bitfinex-currency-code
- *   overrides, merged over the built-in defaults (e.g. `{ USDT0: 'UST' }`). Keys and
- *   values are upper-cased.
- */
 export class BitfinexPricingClient extends PricingClient {
     /**
-     * @param {BitfinexPricingClientOptions} [opts={}]
+     * Creates a Bitfinex pricing client.
+     *
+     * @param {BitfinexPricingClientOptions} [options] - The client's options (default: no currency-code overrides).
      */
-    constructor(opts?: BitfinexPricingClientOptions);
+    constructor(options?: BitfinexPricingClientOptions);
     /** @private */
     private HISTORICAL_DATA_AGE;
     /** @private */
@@ -23,12 +13,7 @@ export class BitfinexPricingClient extends PricingClient {
     private client;
     /** @private */
     private _currencyCodes;
-    /**
-     * Returns the Bitfinex currency code for a common ticker symbol.
-     * @private
-     * @param {string} symbol - Common ticker symbol (e.g. 'USDT')
-     * @returns {string} Bitfinex currency code (e.g. 'UST'), or the upper-cased symbol when no translation exists
-     */
+    /** @private */
     private _currencyCode;
     /** @private */
     private _fxBatch;
@@ -49,18 +34,19 @@ export class BitfinexPricingClient extends PricingClient {
      */
     private _cappedToMaxResults;
 }
+export type PricePair = import("@tetherto/wdk-pricing-provider").PricePair;
+export type HistoricalPriceOptions = import("@tetherto/wdk-pricing-provider").HistoricalPriceOptions;
+export type HistoricalPriceResult = import("@tetherto/wdk-pricing-provider").HistoricalPriceResult;
+export type PriceData = import("@tetherto/wdk-pricing-provider").PriceData;
+/**
+ * The options accepted by `BitfinexPricingClient`.
+ */
 export type BitfinexPricingClientOptions = {
     /**
      * - Common-symbol-to-Bitfinex-currency-code
      * overrides, merged over the built-in defaults (e.g. `{ USDT0: 'UST' }`). Keys and
      * values are upper-cased.
      */
-    currencyCodes?: {
-        [x: string]: string;
-    };
+    currencyCodes?: Record<string, string>;
 };
-export type PricePair = import("@tetherto/wdk-pricing-provider").PricePair;
-export type HistoricalPriceOptions = import("@tetherto/wdk-pricing-provider").HistoricalPriceOptions;
-export type HistoricalPriceResult = import("@tetherto/wdk-pricing-provider").HistoricalPriceResult;
-export type PriceData = import("@tetherto/wdk-pricing-provider").PriceData;
 import { PricingClient } from '@tetherto/wdk-pricing-provider';

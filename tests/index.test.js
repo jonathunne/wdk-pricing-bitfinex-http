@@ -18,6 +18,17 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals'
 import axios from 'axios'
 import { BitfinexPricingClient } from '../index'
 
+const REQUEST_HEADERS = {
+  headers: {
+    contentType: 'application/json',
+    accept: 'application/json'
+  }
+}
+
+const DUMMY_UST_PRICE = 1.0004
+const DUMMY_UDC_PRICE = 1.0008
+const DUMMY_BTC_UST_PRICE = 83869
+
 describe('BitfinexPricingClient', () => {
   let client
   let mockGet
@@ -63,12 +74,7 @@ describe('BitfinexPricingClient', () => {
       })
       expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
         pairs: [{ ccy1: 'BTC', ccy2: 'USD', amount: 1 }]
-      }, {
-        headers: {
-          contentType: 'application/json',
-          accept: 'application/json'
-        }
-      })
+      }, REQUEST_HEADERS)
     })
 
     it('should return null (not undefined) when a pair cannot be resolved', async () => {
@@ -82,14 +88,14 @@ describe('BitfinexPricingClient', () => {
     })
 
     it('should translate USDT to the Bitfinex UST code', async () => {
-      mockPost.mockReset().mockResolvedValue({ data: [1.0004] })
+      mockPost.mockReset().mockResolvedValue({ data: [DUMMY_UST_PRICE] })
 
       const price = await client.getCurrentPrice('USDT', 'USD')
 
-      expect(price).toBe(1.0004)
+      expect(price).toBe(DUMMY_UST_PRICE)
       expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
         pairs: [{ ccy1: 'UST', ccy2: 'USD', amount: 1 }]
-      }, expect.anything())
+      }, REQUEST_HEADERS)
     })
   })
 
@@ -110,12 +116,7 @@ describe('BitfinexPricingClient', () => {
           { ccy1: 'BTC', ccy2: 'USD', amount: 1 },
           { ccy1: 'ETH', ccy2: 'USD', amount: 1 }
         ]
-      }, {
-        headers: {
-          contentType: 'application/json',
-          accept: 'application/json'
-        }
-      })
+      }, REQUEST_HEADERS)
     })
 
     it('should handle single pair', async () => {
@@ -139,35 +140,24 @@ describe('BitfinexPricingClient', () => {
       }, expect.anything())
     })
 
-    it('should translate a common base symbol to its Bitfinex currency code', async () => {
-      mockPost.mockReset().mockResolvedValue({ data: [1.0004] })
-
-      const prices = await client.getMultiCurrentPrices([{ from: 'USDT', to: 'USD' }])
-
-      expect(prices).toEqual([1.0004])
-      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
-        pairs: [{ ccy1: 'UST', ccy2: 'USD', amount: 1 }]
-      }, expect.anything())
-    })
-
     it('should translate a common quote symbol to its Bitfinex currency code', async () => {
-      mockPost.mockReset().mockResolvedValue({ data: [83869] })
+      mockPost.mockReset().mockResolvedValue({ data: [DUMMY_BTC_UST_PRICE] })
 
       await client.getMultiCurrentPrices([{ from: 'BTC', to: 'USDT' }])
 
       expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
         pairs: [{ ccy1: 'BTC', ccy2: 'UST', amount: 1 }]
-      }, expect.anything())
+      }, REQUEST_HEADERS)
     })
 
     it('should translate lower-case symbols', async () => {
-      mockPost.mockReset().mockResolvedValue({ data: [1.0004] })
+      mockPost.mockReset().mockResolvedValue({ data: [DUMMY_UST_PRICE] })
 
       await client.getMultiCurrentPrices([{ from: 'usdt', to: 'usd' }])
 
       expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
         pairs: [{ ccy1: 'UST', ccy2: 'USD', amount: 1 }]
-      }, expect.anything())
+      }, REQUEST_HEADERS)
     })
 
     it.each([
@@ -186,7 +176,7 @@ describe('BitfinexPricingClient', () => {
 
       expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
         pairs: [{ ccy1: code, ccy2: 'USD', amount: 1 }]
-      }, expect.anything())
+      }, REQUEST_HEADERS)
     })
 
     it('should send symbols without a translation unchanged', async () => {
@@ -202,7 +192,7 @@ describe('BitfinexPricingClient', () => {
           { ccy1: 'XAUT', ccy2: 'USD', amount: 1 },
           { ccy1: 'TON', ccy2: 'USD', amount: 1 }
         ]
-      }, expect.anything())
+      }, REQUEST_HEADERS)
     })
 
     it('should return null for pairs Bitfinex cannot quote directly without extra requests', async () => {
@@ -233,40 +223,40 @@ describe('BitfinexPricingClient', () => {
 
   describe('constructor currencyCodes option', () => {
     it('should add a translation for a symbol not in the defaults', async () => {
-      mockPost.mockReset().mockResolvedValue({ data: [1.0004] })
+      mockPost.mockReset().mockResolvedValue({ data: [DUMMY_UST_PRICE] })
       const custom = new BitfinexPricingClient({ currencyCodes: { USDT0: 'UST' } })
 
       await custom.getMultiCurrentPrices([{ from: 'USDT0', to: 'USD' }])
 
       expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
         pairs: [{ ccy1: 'UST', ccy2: 'USD', amount: 1 }]
-      }, expect.anything())
+      }, REQUEST_HEADERS)
     })
 
     it('should override a default translation', async () => {
-      mockPost.mockReset().mockResolvedValue({ data: [1.0004] })
+      mockPost.mockReset().mockResolvedValue({ data: [DUMMY_UST_PRICE] })
       const custom = new BitfinexPricingClient({ currencyCodes: { USDT: 'USX' } })
 
       await custom.getMultiCurrentPrices([{ from: 'USDT', to: 'USD' }])
 
       expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
         pairs: [{ ccy1: 'USX', ccy2: 'USD', amount: 1 }]
-      }, expect.anything())
+      }, REQUEST_HEADERS)
     })
 
     it('should match override keys and values case-insensitively', async () => {
-      mockPost.mockReset().mockResolvedValue({ data: [83869] })
+      mockPost.mockReset().mockResolvedValue({ data: [DUMMY_BTC_UST_PRICE] })
       const custom = new BitfinexPricingClient({ currencyCodes: { tbtc: 'btc' } })
 
       await custom.getMultiCurrentPrices([{ from: 'tBTC', to: 'USD' }])
 
       expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
         pairs: [{ ccy1: 'BTC', ccy2: 'USD', amount: 1 }]
-      }, expect.anything())
+      }, REQUEST_HEADERS)
     })
 
     it('should keep the default translations when overrides are given', async () => {
-      mockPost.mockReset().mockResolvedValue({ data: [1.0004, 1.0008] })
+      mockPost.mockReset().mockResolvedValue({ data: [DUMMY_UST_PRICE, DUMMY_UDC_PRICE] })
       const custom = new BitfinexPricingClient({ currencyCodes: { USDT0: 'UST' } })
 
       await custom.getMultiCurrentPrices([
@@ -279,7 +269,7 @@ describe('BitfinexPricingClient', () => {
           { ccy1: 'UST', ccy2: 'USD', amount: 1 },
           { ccy1: 'UDC', ccy2: 'USD', amount: 1 }
         ]
-      }, expect.anything())
+      }, REQUEST_HEADERS)
     })
   })
 
@@ -482,6 +472,37 @@ describe('BitfinexPricingClient', () => {
         { lastPrice: 83858, dailyChange: 500, dailyChangeRelative: 0.006 }
       ])
       expect(mockGet).toHaveBeenCalledWith('/tickers?symbols=tUSTUSD,tBTCUST')
+    })
+
+    it('should apply the colon separator to the translated code, not the input symbol', async () => {
+      mockGet.mockReset().mockResolvedValue({
+        data: [
+          ['tWHBT:USD', 83, 1, 84, 1, 0.192, 0.00228, 84.349, 1, 85, 83],
+          ['tWBTUSD', 87500, 1, 87600, 1, 500, 0.006, 87539, 1, 88000, 87000]
+        ]
+      })
+
+      const result = await client.getMultiPriceData([
+        { from: 'WBT', to: 'USD' },
+        { from: 'WBTC', to: 'USD' }
+      ])
+
+      expect(result).toEqual([
+        { lastPrice: 84.349, dailyChange: 0.192, dailyChangeRelative: 0.00228 },
+        { lastPrice: 87539, dailyChange: 500, dailyChangeRelative: 0.006 }
+      ])
+      expect(mockGet).toHaveBeenCalledWith('/tickers?symbols=tWHBT:USD,tWBTUSD')
+    })
+
+    it('should translate a symbol once, without chaining through another entry', async () => {
+      mockGet.mockReset().mockResolvedValue({
+        data: [['tWBTUSD', 87500, 1, 87600, 1, 500, 0.006, 87539, 1, 88000, 87000]]
+      })
+
+      const result = await client.getMultiPriceData([{ from: 'WBTC', to: 'USD' }])
+
+      expect(result).toEqual([{ lastPrice: 87539, dailyChange: 500, dailyChangeRelative: 0.006 }])
+      expect(mockGet).toHaveBeenCalledWith('/tickers?symbols=tWBTUSD')
     })
 
     it('should return null for a pair missing from the response', async () => {

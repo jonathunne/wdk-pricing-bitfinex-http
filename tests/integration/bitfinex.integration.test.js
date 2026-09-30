@@ -37,7 +37,6 @@ describe('Integration: BitfinexPricingClient (real API)', () => {
 
     const price = await client.getCurrentPrice('USDT', 'USD')
 
-    expect(typeof price).toBe('number')
     expect(price).toBeGreaterThan(0.9)
     expect(price).toBeLessThan(1.1)
   })
@@ -47,9 +46,12 @@ describe('Integration: BitfinexPricingClient (real API)', () => {
 
     const [data] = await client.getMultiPriceData([{ from: 'USDT', to: 'USD' }])
 
-    expect(data).not.toBeNull()
     expect(data.lastPrice).toBeGreaterThan(0.9)
     expect(data.lastPrice).toBeLessThan(1.1)
+    expect(data.dailyChange).toBeGreaterThan(-0.05)
+    expect(data.dailyChange).toBeLessThan(0.05)
+    expect(data.dailyChangeRelative).toBeGreaterThan(-0.05)
+    expect(data.dailyChangeRelative).toBeLessThan(0.05)
   })
 
   it('returns null for a fiat currency Bitfinex does not quote directly', async () => {
