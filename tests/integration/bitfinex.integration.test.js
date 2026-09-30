@@ -32,6 +32,26 @@ describe('Integration: BitfinexPricingClient (real API)', () => {
     expect(prices[1]).toBeGreaterThan(0)
   })
 
+  it('prices USDT by translating it to the Bitfinex UST code', async () => {
+    const client = new BitfinexPricingClient()
+
+    const price = await client.getCurrentPrice('USDT', 'USD')
+
+    expect(typeof price).toBe('number')
+    expect(price).toBeGreaterThan(0.9)
+    expect(price).toBeLessThan(1.1)
+  })
+
+  it('returns price data for USDT via the translated ticker', async () => {
+    const client = new BitfinexPricingClient()
+
+    const [data] = await client.getMultiPriceData([{ from: 'USDT', to: 'USD' }])
+
+    expect(data).not.toBeNull()
+    expect(data.lastPrice).toBeGreaterThan(0.9)
+    expect(data.lastPrice).toBeLessThan(1.1)
+  })
+
   it('returns null for a fiat currency Bitfinex does not quote directly', async () => {
     const client = new BitfinexPricingClient()
 

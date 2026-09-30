@@ -24,6 +24,30 @@ import axios from 'axios'
  * @typedef {import('@tetherto/wdk-pricing-provider').PriceData} PriceData
  */
 
+/**
+ * @typedef {Object} BitfinexPricingClientOptions
+ * @property {Object<string, string>} [currencyCodes] - Common-symbol-to-Bitfinex-currency-code
+ *   overrides, merged over the built-in defaults (e.g. `{ USDT0: 'UST' }`). Keys and
+ *   values are upper-cased.
+ */
+
+/**
+ * Bitfinex quotes some assets under its own currency codes. This table translates
+ * the common ticker symbol callers pass to `PricingClient` methods into the code
+ * Bitfinex expects; symbols absent from it are sent unchanged.
+ * @type {Object<string, string>}
+ */
+const DEFAULT_CURRENCY_CODES = {
+  USDT: 'UST',
+  USDC: 'UDC',
+  WBTC: 'WBT',
+  WBT: 'WHBT',
+  OP: 'OPX',
+  ALGO: 'ALG',
+  DASH: 'DSH',
+  IOTA: 'IOT'
+}
+
 export class BitfinexPricingClient extends PricingClient {
   /** @private */
   HISTORICAL_DATA_AGE = 365 * 24 * 60 * 60000
@@ -31,12 +55,32 @@ export class BitfinexPricingClient extends PricingClient {
   /** @private */
   MAX_HISTORICAL_ENTRIES = 100
 
-  constructor () {
+  /**
+   * @param {BitfinexPricingClientOptions} [opts={}]
+   */
+  constructor (opts = {}) {
     super()
     /** @private */
     this.client = axios.create({
       baseURL: 'https://api-pub.bitfinex.com/v2'
     })
+
+    /** @private */
+    this._currencyCodes = { ...DEFAULT_CURRENCY_CODES }
+    for (const [symbol, code] of Object.entries(opts.currencyCodes ?? {})) {
+      this._currencyCodes[symbol.toUpperCase()] = code.toUpperCase()
+    }
+  }
+
+  /**
+   * Returns the Bitfinex currency code for a common ticker symbol.
+   * @private
+   * @param {string} symbol - Common ticker symbol (e.g. 'USDT')
+   * @returns {string} Bitfinex currency code (e.g. 'UST'), or the upper-cased symbol when no translation exists
+   */
+  _currencyCode (symbol) {
+    const upper = symbol.toUpperCase()
+    return this._currencyCodes[upper] ?? upper
   }
 
   /**
@@ -71,11 +115,11 @@ export class BitfinexPricingClient extends PricingClient {
    * @private
    * @param {string} from - Base currency (e.g. 'BTC', 'XAUT')
    * @param {string} to - Quote currency (e.g. 'USD')
-   * @returns {string} Bitfinex ticker symbol (e.g. 'tBTCUSD', 'tXAUT:USD')
+   * @returns {string} Bitfinex ticker symbol (e.g. 'tBTCUSD', 'tXAUT:USD', 'tUSTUSD' for USDT)
    */
   _tickerFor (from, to) {
-    const f = from.toUpperCase()
-    const t = to.toUpperCase()
+    const f = this._currencyCode(from)
+    const t = this._currencyCode(to)
     if (f.length > 3 || t.length > 3) {
       return `t${f}:${t}`
     }
@@ -84,7 +128,8 @@ export class BitfinexPricingClient extends PricingClient {
 
   /**
    * Fetches the current conversion rate for multiple currency pairs in a single
-   * batch request. Pairs that Bitfinex cannot convert directly (typically fiat
+   * batch request. Symbols are translated to Bitfinex currency codes first (e.g.
+   * USDT to UST). Pairs that Bitfinex cannot convert directly (typically fiat
    * currencies it does not quote, e.g. BRL or ARS) resolve to `null`.
    * @param {PricePair[]} list - Array of currency pairs
    * @returns {Promise<Array<number|null>>} Prices in the same order as input pairs; `null` for pairs that cannot be resolved
@@ -92,8 +137,8 @@ export class BitfinexPricingClient extends PricingClient {
   async getMultiCurrentPrices (list) {
     return this._fxBatch(
       list.map((p) => ({
-        ccy1: p.from.toUpperCase(),
-        ccy2: p.to.toUpperCase(),
+        ccy1: this._currencyCode(p.from),
+        ccy2: this._currencyCode(p.to),
         amount: 1
       }))
     )

@@ -55,7 +55,33 @@ new BitfinexPricingClient(options?)
 
 Parameters:
 
-- `options` (optional): future use
+- `options` (optional):
+  - `currencyCodes`: map of common ticker symbols to Bitfinex currency codes, merged
+    over the built-in defaults. Keys and values are upper-cased.
+
+Symbols passed to every method are common ticker symbols (`USDT`, `BTC`, ...).
+The client translates them to the currency codes Bitfinex expects before
+calling the API, on both the base and the quote side. Built-in translations:
+
+| Symbol | Bitfinex code |
+| ------ | ------------- |
+| `USDT` | `UST`         |
+| `USDC` | `UDC`         |
+| `WBTC` | `WBT`         |
+| `WBT`  | `WHBT`        |
+| `OP`   | `OPX`         |
+| `ALGO` | `ALG`         |
+| `DASH` | `DSH`         |
+| `IOTA` | `IOT`         |
+
+Symbols not in the table are sent unchanged. Use `currencyCodes` to add a translation
+or to price one asset as another:
+
+```javascript
+const client = new BitfinexPricingClient({
+  currencyCodes: { USDT0: "UST" }, // value USDT0 at the USDT price
+});
+```
 
 ### Methods
 
@@ -108,11 +134,10 @@ const series = await client.getHistoricalPrice("BTC", "USD");
 
 ## ⚠️ Limitations
 
-- **Currency codes are Bitfinex-specific.** You must pass the codes Bitfinex
-  uses, not the common ISO/ticker symbol. For example, Tether is `UST` (not
-  `USDT`), and some fiats are only available as tokenized assets such as `CNHT`
-  or `MXNT`. Unknown codes resolve to `null`. The full list is at
-  `https://api-pub.bitfinex.com/v2/conf/pub:list:currency`.
+- **Only the listed symbols are translated.** An asset Bitfinex quotes under a
+  code that differs from its common symbol and is not in the table above must be
+  added via the `currencyCodes` option, or it resolves to `null`. Bitfinex publishes
+  its aliases at `https://api-pub.bitfinex.com/v2/conf/pub:map:currency:sym`.
 - **Only pairs Bitfinex quotes directly are supported.** Fiat currencies
   Bitfinex does not quote (e.g. BRL, ARS) resolve to `null` in
   `getCurrentPrice`, `getMultiCurrentPrices`, and `getMultiPriceData`, and

@@ -80,6 +80,17 @@ describe('BitfinexPricingClient', () => {
 
       expect(price).toBeNull()
     })
+
+    it('should translate USDT to the Bitfinex UST code', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [1.0004] })
+
+      const price = await client.getCurrentPrice('USDT', 'USD')
+
+      expect(price).toBe(1.0004)
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'UST', ccy2: 'USD', amount: 1 }]
+      }, expect.anything())
+    })
   })
 
   describe('getMultiCurrentPrices', () => {
@@ -128,6 +139,72 @@ describe('BitfinexPricingClient', () => {
       }, expect.anything())
     })
 
+    it('should translate a common base symbol to its Bitfinex currency code', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [1.0004] })
+
+      const prices = await client.getMultiCurrentPrices([{ from: 'USDT', to: 'USD' }])
+
+      expect(prices).toEqual([1.0004])
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'UST', ccy2: 'USD', amount: 1 }]
+      }, expect.anything())
+    })
+
+    it('should translate a common quote symbol to its Bitfinex currency code', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [83869] })
+
+      await client.getMultiCurrentPrices([{ from: 'BTC', to: 'USDT' }])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'BTC', ccy2: 'UST', amount: 1 }]
+      }, expect.anything())
+    })
+
+    it('should translate lower-case symbols', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [1.0004] })
+
+      await client.getMultiCurrentPrices([{ from: 'usdt', to: 'usd' }])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'UST', ccy2: 'USD', amount: 1 }]
+      }, expect.anything())
+    })
+
+    it.each([
+      ['USDT', 'UST'],
+      ['USDC', 'UDC'],
+      ['WBTC', 'WBT'],
+      ['WBT', 'WHBT'],
+      ['OP', 'OPX'],
+      ['ALGO', 'ALG'],
+      ['DASH', 'DSH'],
+      ['IOTA', 'IOT']
+    ])('should translate %s to the Bitfinex code %s by default', async (symbol, code) => {
+      mockPost.mockReset().mockResolvedValue({ data: [1] })
+
+      await client.getMultiCurrentPrices([{ from: symbol, to: 'USD' }])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: code, ccy2: 'USD', amount: 1 }]
+      }, expect.anything())
+    })
+
+    it('should send symbols without a translation unchanged', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [2700, 1.5] })
+
+      await client.getMultiCurrentPrices([
+        { from: 'XAUT', to: 'USD' },
+        { from: 'TON', to: 'USD' }
+      ])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [
+          { ccy1: 'XAUT', ccy2: 'USD', amount: 1 },
+          { ccy1: 'TON', ccy2: 'USD', amount: 1 }
+        ]
+      }, expect.anything())
+    })
+
     it('should return null for pairs Bitfinex cannot quote directly without extra requests', async () => {
       mockPost
         .mockReset()
@@ -151,6 +228,58 @@ describe('BitfinexPricingClient', () => {
       const prices = await client.getMultiCurrentPrices([{ from: 'BTC', to: 'XYZ' }])
 
       expect(prices).toEqual([null])
+    })
+  })
+
+  describe('constructor currencyCodes option', () => {
+    it('should add a translation for a symbol not in the defaults', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [1.0004] })
+      const custom = new BitfinexPricingClient({ currencyCodes: { USDT0: 'UST' } })
+
+      await custom.getMultiCurrentPrices([{ from: 'USDT0', to: 'USD' }])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'UST', ccy2: 'USD', amount: 1 }]
+      }, expect.anything())
+    })
+
+    it('should override a default translation', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [1.0004] })
+      const custom = new BitfinexPricingClient({ currencyCodes: { USDT: 'USX' } })
+
+      await custom.getMultiCurrentPrices([{ from: 'USDT', to: 'USD' }])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'USX', ccy2: 'USD', amount: 1 }]
+      }, expect.anything())
+    })
+
+    it('should match override keys and values case-insensitively', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [83869] })
+      const custom = new BitfinexPricingClient({ currencyCodes: { tbtc: 'btc' } })
+
+      await custom.getMultiCurrentPrices([{ from: 'tBTC', to: 'USD' }])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'BTC', ccy2: 'USD', amount: 1 }]
+      }, expect.anything())
+    })
+
+    it('should keep the default translations when overrides are given', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [1.0004, 1.0008] })
+      const custom = new BitfinexPricingClient({ currencyCodes: { USDT0: 'UST' } })
+
+      await custom.getMultiCurrentPrices([
+        { from: 'USDT0', to: 'USD' },
+        { from: 'USDC', to: 'USD' }
+      ])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [
+          { ccy1: 'UST', ccy2: 'USD', amount: 1 },
+          { ccy1: 'UDC', ccy2: 'USD', amount: 1 }
+        ]
+      }, expect.anything())
     })
   })
 
@@ -206,6 +335,22 @@ describe('BitfinexPricingClient', () => {
       await expect(
         client.getHistoricalPrice('BTC', 'USD', { start: tooOld, end: now })
       ).rejects.toThrow('Start date should be within last 365 days')
+    })
+
+    it('should request the translated ticker for a common symbol', async () => {
+      const now = new Date().getTime()
+      const end = now - (now % 3600000)
+      const start = end - (2 * 3600000)
+
+      mockGet.mockReset().mockResolvedValueOnce({
+        data: [['tUSTUSD', 1, 1, 1.0004, 0, 0, 0, 0, 0, 0, 0, 0, start]]
+      }).mockResolvedValueOnce({ data: [] })
+
+      await client.getHistoricalPrice('USDT', 'USD', { start, end })
+
+      expect(mockGet).toHaveBeenCalledWith(
+        `/tickers/hist?symbols=tUSTUSD&limit=100&start=${start}&end=${end}`
+      )
     })
 
     it('should cap results to MAX_HISTORICAL_ENTRIES', async () => {
@@ -317,6 +462,26 @@ describe('BitfinexPricingClient', () => {
         { lastPrice: 2700.5, dailyChange: 15.5, dailyChangeRelative: 0.006 }
       ])
       expect(mockGet).toHaveBeenCalledWith('/tickers?symbols=tXAUT:USD')
+    })
+
+    it('should translate common symbols to Bitfinex tickers and map the response back', async () => {
+      mockGet.mockReset().mockResolvedValue({
+        data: [
+          ['tUSTUSD', 1.0003, 100, 1.0005, 100, -0.0004, -0.0004, 1.0004, 500, 1.0009, 1.0003],
+          ['tBTCUST', 83800, 1, 83900, 1, 500, 0.006, 83858, 100, 84000, 83000]
+        ]
+      })
+
+      const result = await client.getMultiPriceData([
+        { from: 'USDT', to: 'USD' },
+        { from: 'BTC', to: 'USDT' }
+      ])
+
+      expect(result).toEqual([
+        { lastPrice: 1.0004, dailyChange: -0.0004, dailyChangeRelative: -0.0004 },
+        { lastPrice: 83858, dailyChange: 500, dailyChangeRelative: 0.006 }
+      ])
+      expect(mockGet).toHaveBeenCalledWith('/tickers?symbols=tUSTUSD,tBTCUST')
     })
 
     it('should return null for a pair missing from the response', async () => {
