@@ -35,9 +35,8 @@ import axios from 'axios'
 
 /**
  * Translates the common ticker symbol callers pass to `PricingClient` methods
- * into the currency code Bitfinex expects. Only symbols Bitfinex publishes under
- * more than one code, or that callers pin deliberately, need an entry here; the
- * rest are resolved from {@link CURRENCY_MAP_PATH}.
+ * into the currency code Bitfinex expects. It holds the symbols Bitfinex publishes
+ * under more than one code; everything else is resolved from {@link CURRENCY_MAP_PATH}.
  *
  * @type {Record<string, string>}
  */
@@ -64,7 +63,7 @@ const CURRENCY_MAP_PATH = '/conf/pub:map:currency:sym'
  * Test and derivative codes are ignored, and a symbol claimed by more than one code
  * is left out so the lookup falls back to the symbol itself.
  *
- * @param {Array<[string, string]>} aliases - Bitfinex currency code and common symbol pairs.
+ * @param {[string, string][]} aliases - Bitfinex currency code and common symbol pairs.
  * @returns {Map<string, string>} Currency codes keyed by common ticker symbol.
  */
 function toCurrencyCodeMap (aliases) {
@@ -92,7 +91,7 @@ export class BitfinexPricingClient extends PricingClient {
   /**
    * Creates a Bitfinex pricing client.
    *
-   * @param {BitfinexPricingClientOptions} [options] - The client's options (default: no currency-code overrides).
+   * @param {BitfinexPricingClientOptions} [options] - Currency-code overrides applied over the built-in defaults (default: none).
    */
   constructor (options = {}) {
     super()
@@ -118,7 +117,7 @@ export class BitfinexPricingClient extends PricingClient {
         .get(CURRENCY_MAP_PATH)
         .then((response) => toCurrencyCodeMap(response.data[0]))
         .catch(() => {
-          // Leave the lookup working without the aliases, and retry on the next call.
+          // Leave the lookup working without the aliases, and retry on the next lookup.
           this._apiCodesPromise = null
           return new Map()
         })
@@ -172,7 +171,7 @@ export class BitfinexPricingClient extends PricingClient {
    * @private
    * @param {string} from - Base currency (e.g. 'BTC', 'XAUT')
    * @param {string} to - Quote currency (e.g. 'USD')
-   * @returns {string} Bitfinex ticker symbol (e.g. 'tBTCUSD', 'tXAUT:USD', 'tUSTUSD' for USDT)
+   * @returns {Promise<string>} Bitfinex ticker symbol (e.g. 'tBTCUSD', 'tXAUT:USD', 'tUSTUSD' for USDT)
    */
   async _tickerFor (from, to) {
     const [f, t] = await Promise.all([this._currencyCode(from), this._currencyCode(to)])
@@ -193,11 +192,14 @@ export class BitfinexPricingClient extends PricingClient {
    */
   async getMultiCurrentPrices (list) {
     const pairs = await Promise.all(
-      list.map(async (p) => ({
-        ccy1: await this._currencyCode(p.from),
-        ccy2: await this._currencyCode(p.to),
-        amount: 1
-      }))
+      list.map(async (p) => {
+        const [ccy1, ccy2] = await Promise.all([
+          this._currencyCode(p.from),
+          this._currencyCode(p.to)
+        ])
+
+        return { ccy1, ccy2, amount: 1 }
+      })
     )
 
     return this._fxBatch(pairs)
@@ -205,7 +207,8 @@ export class BitfinexPricingClient extends PricingClient {
 
   /**
    * Fetches full price data (last price, daily change, relative daily change)
-   * for multiple currency pairs in a single batch request.
+   * for multiple currency pairs in a single batch request. Symbols are translated
+   * to Bitfinex currency codes first (e.g. USDT to UST).
    * @param {PricePair[]} list - Array of currency pairs
    * @returns {Promise<Array<PriceData|null>>} Price data in the same order as input pairs; `null` for pairs not present in the response
    */

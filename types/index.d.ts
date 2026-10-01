@@ -2,7 +2,7 @@ export class BitfinexPricingClient extends PricingClient {
     /**
      * Creates a Bitfinex pricing client.
      *
-     * @param {BitfinexPricingClientOptions} [options] - The client's options (default: no currency-code overrides).
+     * @param {BitfinexPricingClientOptions} [options] - Currency-code overrides applied over the built-in defaults (default: none).
      */
     constructor(options?: BitfinexPricingClientOptions);
     /** @private */
@@ -28,7 +28,7 @@ export class BitfinexPricingClient extends PricingClient {
      * @private
      * @param {string} from - Base currency (e.g. 'BTC', 'XAUT')
      * @param {string} to - Quote currency (e.g. 'USD')
-     * @returns {string} Bitfinex ticker symbol (e.g. 'tBTCUSD', 'tXAUT:USD', 'tUSTUSD' for USDT)
+     * @returns {Promise<string>} Bitfinex ticker symbol (e.g. 'tBTCUSD', 'tXAUT:USD', 'tUSTUSD' for USDT)
      */
     private _tickerFor;
     /**
