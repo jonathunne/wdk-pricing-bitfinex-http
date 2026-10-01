@@ -29,10 +29,22 @@ const DUMMY_UST_PRICE = 1.0004
 const DUMMY_UDC_PRICE = 1.0008
 const DUMMY_BTC_UST_PRICE = 83869
 
+// Built so BTC is claimed only by filtered codes and XAUT by two, exercising both skip paths.
+const MOCK_CURRENCY_ALIASES = [
+  ['UST', 'USDt'],
+  ['USE', 'USDt'],
+  ['ATO', 'ATOM'],
+  ['XAUT', 'XAUt'],
+  ['XAUT0BNB', 'XAUt'],
+  ['TESTBTC', 'BTC'],
+  ['BTCF0', 'BTC']
+]
+
 describe('BitfinexPricingClient', () => {
   let client
   let mockGet
   let mockPost
+  let mockConfGet
 
   beforeEach(() => {
     // Create a mock get function for historical data
@@ -56,8 +68,12 @@ describe('BitfinexPricingClient', () => {
     })
 
     // Mock axios.create to return an object with our mock get function for historical data
+    // Served separately, so each test configures only the pricing responses it cares about.
+    mockConfGet = jest.fn().mockResolvedValue({ data: [MOCK_CURRENCY_ALIASES] })
+
     axios.create = jest.fn().mockReturnValue({
-      get: mockGet,
+      get: (path, ...rest) =>
+        path.startsWith('/conf/') ? mockConfGet(path, ...rest) : mockGet(path, ...rest),
       post: mockPost
     })
 
@@ -270,6 +286,104 @@ describe('BitfinexPricingClient', () => {
           { ccy1: 'UDC', ccy2: 'USD', amount: 1 }
         ]
       }, REQUEST_HEADERS)
+    })
+  })
+
+  describe('currency code resolution', () => {
+    it('should resolve a symbol missing from the defaults using the published aliases', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [4.5] })
+
+      await client.getMultiCurrentPrices([{ from: 'ATOM', to: 'USD' }])
+
+      expect(mockConfGet).toHaveBeenCalledWith('/conf/pub:map:currency:sym')
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'ATO', ccy2: 'USD', amount: 1 }]
+      }, REQUEST_HEADERS)
+    })
+
+    it('should prefer the default over the published aliases', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [1.0004] })
+
+      await client.getMultiCurrentPrices([{ from: 'USDT', to: 'USD' }])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'UST', ccy2: 'USD', amount: 1 }]
+      }, REQUEST_HEADERS)
+    })
+
+    it('should prefer a constructor override over the published aliases', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [4.5] })
+      const custom = new BitfinexPricingClient({ currencyCodes: { ATOM: 'ZZZ' } })
+
+      await custom.getMultiCurrentPrices([{ from: 'ATOM', to: 'USD' }])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'ZZZ', ccy2: 'USD', amount: 1 }]
+      }, REQUEST_HEADERS)
+    })
+
+    it('should ignore test and derivative codes when reading the aliases', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [165000] })
+
+      await client.getMultiCurrentPrices([{ from: 'BTC', to: 'USD' }])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'BTC', ccy2: 'USD', amount: 1 }]
+      }, REQUEST_HEADERS)
+    })
+
+    it('should send the symbol unchanged when more than one code claims it', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [2700] })
+
+      await client.getMultiCurrentPrices([{ from: 'XAUT', to: 'USD' }])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'XAUT', ccy2: 'USD', amount: 1 }]
+      }, REQUEST_HEADERS)
+    })
+
+    it('should send the symbol unchanged when no code claims it', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [1.5] })
+
+      await client.getMultiCurrentPrices([{ from: 'TON', to: 'USD' }])
+
+      expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'TON', ccy2: 'USD', amount: 1 }]
+      }, REQUEST_HEADERS)
+    })
+
+    it('should read the aliases once per client, however many symbols are resolved', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [1, 2, 3] })
+
+      await client.getMultiCurrentPrices([
+        { from: 'ATOM', to: 'USD' },
+        { from: 'BTC', to: 'USD' },
+        { from: 'TON', to: 'USD' }
+      ])
+      await client.getCurrentPrice('ATOM', 'USD')
+
+      expect(mockConfGet).toHaveBeenCalledTimes(1)
+    })
+
+    it('should send the symbol unchanged when the aliases cannot be read, and retry next call', async () => {
+      mockPost.mockReset().mockResolvedValue({ data: [4.5] })
+      mockConfGet
+        .mockReset()
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValue({ data: [MOCK_CURRENCY_ALIASES] })
+
+      await client.getMultiCurrentPrices([{ from: 'ATOM', to: 'USD' }])
+
+      expect(mockPost).toHaveBeenLastCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'ATOM', ccy2: 'USD', amount: 1 }]
+      }, REQUEST_HEADERS)
+
+      await client.getMultiCurrentPrices([{ from: 'ATOM', to: 'USD' }])
+
+      expect(mockPost).toHaveBeenLastCalledWith('/calc/fx/batch', {
+        pairs: [{ ccy1: 'ATO', ccy2: 'USD', amount: 1 }]
+      }, REQUEST_HEADERS)
+      expect(mockConfGet).toHaveBeenCalledTimes(2)
     })
   })
 

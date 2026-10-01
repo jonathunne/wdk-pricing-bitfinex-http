@@ -54,6 +54,16 @@ describe('Integration: BitfinexPricingClient (real API)', () => {
     expect(data.dailyChangeRelative).toBeLessThan(0.05)
   })
 
+  it('prices a symbol that only the published aliases can resolve', async () => {
+    const client = new BitfinexPricingClient()
+
+    // LBTC is absent from the built-in table; Bitfinex quotes it as LBT.
+    const price = await client.getCurrentPrice('LBTC', 'USD')
+
+    expect(typeof price).toBe('number')
+    expect(price).toBeGreaterThan(0)
+  })
+
   it('returns null for a fiat currency Bitfinex does not quote directly', async () => {
     const client = new BitfinexPricingClient()
 

@@ -61,7 +61,20 @@ Parameters:
 
 Symbols passed to every method are common ticker symbols (`USDT`, `BTC`, ...).
 The client translates them to the currency codes Bitfinex expects before
-calling the API, on both the base and the quote side. Built-in translations:
+calling the API, on both the base and the quote side. It resolves each symbol
+in three steps:
+
+1. The built-in table below, with any `currencyCodes` override merged over it.
+2. Bitfinex's published aliases, read once per client from
+   `https://api-pub.bitfinex.com/v2/conf/pub:map:currency:sym`. Test and
+   derivative codes are ignored, and a symbol claimed by more than one code is
+   skipped so step 3 applies.
+3. The symbol itself, sent unchanged.
+
+Step 1 is the pinned fast path: it covers the symbols Bitfinex publishes under
+more than one code, where the aliases alone cannot say which is right, and it
+keeps working when the alias endpoint is unreachable. Step 2 covers everything
+else, so new listings need no change here. Built-in translations:
 
 | Symbol | Bitfinex code |
 | ------ | ------------- |
@@ -74,8 +87,7 @@ calling the API, on both the base and the quote side. Built-in translations:
 | `DASH` | `DSH`         |
 | `IOTA` | `IOT`         |
 
-Symbols not in the table are sent unchanged. Use `currencyCodes` to add a translation
-or to price one asset as another:
+Use `currencyCodes` to pin a translation or to price one asset as another:
 
 ```javascript
 const client = new BitfinexPricingClient({
@@ -134,10 +146,11 @@ const series = await client.getHistoricalPrice("BTC", "USD");
 
 ## ⚠️ Limitations
 
-- **Only the listed symbols are translated.** An asset Bitfinex quotes under a
-  code that differs from its common symbol and is not in the table above must be
-  added via the `currencyCodes` option, or it resolves to `null`. Bitfinex publishes
-  its aliases at `https://api-pub.bitfinex.com/v2/conf/pub:map:currency:sym`.
+- **Ambiguous symbols need an entry.** When Bitfinex publishes several codes for
+  one common symbol, the aliases cannot say which is right, so step 2 skips it and
+  the symbol is sent unchanged. Pin the right code in the table or via the
+  `currencyCodes` option. `USDT` is the current example: `UST`, `USE`, `USX` and
+  `USDTTON` all claim it, and only `UST` has a ticker market.
 - **Only pairs Bitfinex quotes directly are supported.** Fiat currencies
   Bitfinex does not quote (e.g. BRL, ARS) resolve to `null` in
   `getCurrentPrice`, `getMultiCurrentPrices`, and `getMultiPriceData`, and

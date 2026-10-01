@@ -14,6 +14,10 @@ export class BitfinexPricingClient extends PricingClient {
     /** @private */
     private _currencyCodes;
     /** @private */
+    private _apiCodesPromise;
+    /** @private */
+    private _apiCurrencyCodes;
+    /** @private */
     private _currencyCode;
     /** @private */
     private _fxBatch;
