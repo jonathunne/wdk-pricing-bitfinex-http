@@ -1,16 +1,24 @@
-/**
- * @typedef {import('@tetherto/wdk-pricing-provider').PricePair} PricePair
- * @typedef {import('@tetherto/wdk-pricing-provider').HistoricalPriceOptions} HistoricalPriceOptions
- * @typedef {import('@tetherto/wdk-pricing-provider').HistoricalPriceResult} HistoricalPriceResult
- * @typedef {import('@tetherto/wdk-pricing-provider').PriceData} PriceData
- */
 export class BitfinexPricingClient extends PricingClient {
+    /**
+     * Creates a Bitfinex pricing client.
+     *
+     * @param {BitfinexPricingClientOptions} [options] - Currency-code overrides applied over the built-in defaults (default: none).
+     */
+    constructor(options?: BitfinexPricingClientOptions);
     /** @private */
     private HISTORICAL_DATA_AGE;
     /** @private */
     private MAX_HISTORICAL_ENTRIES;
     /** @private */
     private client;
+    /** @private */
+    private _currencyCodes;
+    /** @private */
+    private _apiCodesPromise;
+    /** @private */
+    private _apiCurrencyCodes;
+    /** @private */
+    private _currencyCode;
     /** @private */
     private _fxBatch;
     /**
@@ -20,7 +28,7 @@ export class BitfinexPricingClient extends PricingClient {
      * @private
      * @param {string} from - Base currency (e.g. 'BTC', 'XAUT')
      * @param {string} to - Quote currency (e.g. 'USD')
-     * @returns {string} Bitfinex ticker symbol (e.g. 'tBTCUSD', 'tXAUT:USD')
+     * @returns {Promise<string>} Bitfinex ticker symbol (e.g. 'tBTCUSD', 'tXAUT:USD', 'tUSTUSD' for USDT)
      */
     private _tickerFor;
     /**
@@ -34,4 +42,15 @@ export type PricePair = import("@tetherto/wdk-pricing-provider").PricePair;
 export type HistoricalPriceOptions = import("@tetherto/wdk-pricing-provider").HistoricalPriceOptions;
 export type HistoricalPriceResult = import("@tetherto/wdk-pricing-provider").HistoricalPriceResult;
 export type PriceData = import("@tetherto/wdk-pricing-provider").PriceData;
+/**
+ * The options accepted by `BitfinexPricingClient`.
+ */
+export type BitfinexPricingClientOptions = {
+    /**
+     * - Common-symbol-to-Bitfinex-currency-code
+     * overrides, merged over the built-in defaults (e.g. `{ USDT0: 'UST' }`). Keys and
+     * values are upper-cased.
+     */
+    currencyCodes?: Record<string, string>;
+};
 import { PricingClient } from '@tetherto/wdk-pricing-provider';
