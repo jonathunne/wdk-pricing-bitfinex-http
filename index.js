@@ -42,7 +42,6 @@ import axios from 'axios'
  */
 const DEFAULT_CURRENCY_CODES = {
   USDT: 'UST',
-  USDC: 'UDC',
   WBTC: 'WBT',
   WBT: 'WHBT',
   OP: 'OPX',

@@ -26,7 +26,7 @@ const REQUEST_HEADERS = {
 }
 
 const DUMMY_UST_PRICE = 1.0004
-const DUMMY_UDC_PRICE = 1.0008
+const DUMMY_WBT_PRICE = 85094.5
 const DUMMY_BTC_UST_PRICE = 83869
 
 // Each row isolates one rule, so no two can mask each other.
@@ -179,7 +179,6 @@ describe('BitfinexPricingClient', () => {
 
     it.each([
       ['USDT', 'UST'],
-      ['USDC', 'UDC'],
       ['WBTC', 'WBT'],
       ['WBT', 'WHBT'],
       ['OP', 'OPX'],
@@ -273,18 +272,18 @@ describe('BitfinexPricingClient', () => {
     })
 
     it('should keep the default translations when overrides are given', async () => {
-      mockPost.mockReset().mockResolvedValue({ data: [DUMMY_UST_PRICE, DUMMY_UDC_PRICE] })
+      mockPost.mockReset().mockResolvedValue({ data: [DUMMY_UST_PRICE, DUMMY_WBT_PRICE] })
       const custom = new BitfinexPricingClient({ currencyCodes: { USDT0: 'UST' } })
 
       await custom.getMultiCurrentPrices([
         { from: 'USDT0', to: 'USD' },
-        { from: 'USDC', to: 'USD' }
+        { from: 'WBTC', to: 'USD' }
       ])
 
       expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
         pairs: [
           { ccy1: 'UST', ccy2: 'USD', amount: 1 },
-          { ccy1: 'UDC', ccy2: 'USD', amount: 1 }
+          { ccy1: 'WBT', ccy2: 'USD', amount: 1 }
         ]
       }, REQUEST_HEADERS)
     })
@@ -306,10 +305,10 @@ describe('BitfinexPricingClient', () => {
       mockPost.mockReset().mockResolvedValue({ data: [1.0004] })
 
       // The aliases map USDT to USE; both sides resolve from the defaults.
-      await client.getMultiCurrentPrices([{ from: 'USDT', to: 'USDC' }])
+      await client.getMultiCurrentPrices([{ from: 'WBTC', to: 'USDT' }])
 
       expect(mockPost).toHaveBeenCalledWith('/calc/fx/batch', {
-        pairs: [{ ccy1: 'UST', ccy2: 'UDC', amount: 1 }]
+        pairs: [{ ccy1: 'WBT', ccy2: 'UST', amount: 1 }]
       }, REQUEST_HEADERS)
       expect(mockConfGet).not.toHaveBeenCalled()
     })

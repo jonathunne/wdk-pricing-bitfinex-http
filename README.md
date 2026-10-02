@@ -79,7 +79,6 @@ else, so new listings need no change here. Built-in translations:
 | Symbol | Bitfinex code |
 | ------ | ------------- |
 | `USDT` | `UST`         |
-| `USDC` | `UDC`         |
 | `WBTC` | `WBT`         |
 | `WBT`  | `WHBT`        |
 | `OP`   | `OPX`         |
