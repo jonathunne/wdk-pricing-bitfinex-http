@@ -61,8 +61,7 @@
   "dependencies": {
     "@tetherto/wdk-pricing-provider": "1.0.0-beta.5",
     "axios": "1.20.0",
-    "bare-node-runtime": "^1.4.0",
-    "bare-tls": "^3.1.13"
+    "bare-node-runtime": "^1.5.2"
   },
   "devDependencies": {
     "brittle": "3.19.0",
